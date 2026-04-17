@@ -5,6 +5,7 @@ export const SisyphusAgentConfigSchema = z.object({
   default_builder_enabled: z.boolean().optional(),
   planner_enabled: z.boolean().optional(),
   replace_plan: z.boolean().optional(),
+  keep_opencode_modes: z.boolean().default(false).optional(),
   tdd: z.boolean().default(true).optional(),
 })
 

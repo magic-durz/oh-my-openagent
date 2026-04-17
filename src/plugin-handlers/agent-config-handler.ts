@@ -180,6 +180,7 @@ export async function applyAgentConfig(params: {
     );
 
   const isSisyphusEnabled = params.pluginConfig.sisyphus_agent?.disabled !== true;
+  const keepOpencodeModes = params.pluginConfig.sisyphus_agent?.keep_opencode_modes ?? false;
   const builderEnabled =
     params.pluginConfig.sisyphus_agent?.default_builder_enabled ?? false;
   const plannerEnabled = params.pluginConfig.sisyphus_agent?.planner_enabled ?? true;
@@ -266,10 +267,17 @@ export async function applyAgentConfig(params: {
       : {};
 
     const planDemoteConfig = shouldDemotePlan
-      ? buildPlanDemoteConfig(
-          agentConfig["prometheus"] as Record<string, unknown> | undefined,
-          params.pluginConfig.agents?.plan as Record<string, unknown> | undefined,
-        )
+      ? (() => {
+          const demoted = buildPlanDemoteConfig(
+            agentConfig["prometheus"] as Record<string, unknown> | undefined,
+            params.pluginConfig.agents?.plan as Record<string, unknown> | undefined,
+          );
+          if (keepOpencodeModes) {
+            const { hidden: _, ...withoutHidden } = demoted;
+            return withoutHidden;
+          }
+          return demoted;
+        })()
       : undefined;
 
     const protectedBuiltinAgentNames = createProtectedAgentNameSet([
@@ -305,6 +313,11 @@ export async function applyAgentConfig(params: {
       protectedBuiltinAgentNames,
     );
 
+    const getBuildConfig = (): Record<string, unknown> => {
+      const base = { ...migratedBuild, mode: "subagent" as const };
+      return { build: keepOpencodeModes ? base : { ...base, hidden: true } };
+    };
+
     params.config.agent = {
       ...agentConfig,
       ...Object.fromEntries(
@@ -321,7 +334,7 @@ export async function applyAgentConfig(params: {
       ...filterDisabledAgents(filteredAgentDefinitionAgents),
       ...filterDisabledAgents(filteredOpencodeConfigAgents),
       ...filteredConfigAgents,
-      build: { ...migratedBuild, mode: "subagent", hidden: true },
+      ...getBuildConfig(),
       ...(planDemoteConfig ? { plan: planDemoteConfig } : {}),
     };
   } else {

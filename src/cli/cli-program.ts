@@ -34,6 +34,7 @@ program
   .option("--kimi-for-coding <value>", "Kimi For Coding subscription: no, yes (default: no)")
   .option("--opencode-go <value>", "OpenCode Go subscription: no, yes (default: no)")
   .option("--vercel-ai-gateway <value>", "Vercel AI Gateway: no, yes (default: no)")
+  .option("--keep-opencode-modes <value>", "Keep OpenCode native plan/build modes: no, yes (default: no)")
   .option("--skip-auth", "Skip authentication setup hints")
   .addHelpText("after", `
 Examples:
@@ -63,6 +64,7 @@ Model Providers (Priority: Native > Copilot > OpenCode Zen > Z.ai > Kimi > Verce
       kimiForCoding: options.kimiForCoding,
       opencodeGo: options.opencodeGo,
       vercelAiGateway: options.vercelAiGateway,
+      keepOpencodeModes: options.keepOpencodeModes,
       skipAuth: options.skipAuth ?? false,
     }
     const exitCode = await install(args)

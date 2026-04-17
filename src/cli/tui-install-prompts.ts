@@ -120,6 +120,16 @@ export async function promptInstallConfig(detected: DetectedConfig): Promise<Ins
   })
   if (!vercelAiGateway) return null
 
+  const keepOpencodeModes = await selectOrCancel({
+    message: "Keep OpenCode's default plan/build modes alongside Sisyphus?",
+    options: [
+      { value: "no", label: "No (recommended)", hint: "Sisyphus manages planning and building" },
+      { value: "yes", label: "Yes", hint: "OpenCode native plan/build agents remain accessible" },
+    ],
+    initialValue: initial.keepOpencodeModes,
+  })
+  if (!keepOpencodeModes) return null
+
   return {
     hasClaude: claude !== "no",
     isMax20: claude === "max20",
@@ -131,5 +141,6 @@ export async function promptInstallConfig(detected: DetectedConfig): Promise<Ins
     hasKimiForCoding: kimiForCoding === "yes",
     hasOpencodeGo: opencodeGo === "yes",
     hasVercelAiGateway: vercelAiGateway === "yes",
+    keepOpencodeModes: keepOpencodeModes === "yes",
   }
 }
