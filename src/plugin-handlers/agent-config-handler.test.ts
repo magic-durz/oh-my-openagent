@@ -655,3 +655,209 @@ describe("applyAgentConfig builtin override protection", () => {
     })
   })
 })
+
+describe("applyAgentConfig keep_opencode_modes", () => {
+  let createBuiltinAgentsSpy: ReturnType<typeof spyOn>
+  let createSisyphusJuniorAgentSpy: ReturnType<typeof spyOn>
+  let discoverConfigSourceSkillsSpy: ReturnType<typeof spyOn>
+  let discoverUserClaudeSkillsSpy: ReturnType<typeof spyOn>
+  let discoverProjectClaudeSkillsSpy: ReturnType<typeof spyOn>
+  let discoverOpencodeGlobalSkillsSpy: ReturnType<typeof spyOn>
+  let discoverOpencodeProjectSkillsSpy: ReturnType<typeof spyOn>
+  let discoverProjectAgentsSkillsSpy: ReturnType<typeof spyOn>
+  let discoverGlobalAgentsSkillsSpy: ReturnType<typeof spyOn>
+  let loadUserAgentsSpy: ReturnType<typeof spyOn>
+  let loadProjectAgentsSpy: ReturnType<typeof spyOn>
+  let loadAgentDefinitionsSpy: ReturnType<typeof spyOn>
+  let readOpencodeConfigAgentsSpy: ReturnType<typeof spyOn>
+  let migrateAgentConfigSpy: ReturnType<typeof spyOn>
+  let logSpy: ReturnType<typeof spyOn>
+
+  const builtinSisyphusConfig: AgentConfig = {
+    name: "Builtin Sisyphus",
+    prompt: "builtin prompt",
+    mode: "primary",
+    order: 1,
+  }
+
+  const builtinAtlasConfig: AgentConfig = {
+    name: "atlas",
+    prompt: "atlas prompt",
+    mode: "all",
+    model: "openai/gpt-5.4",
+  }
+
+  const sisyphusJuniorConfig: AgentConfig = {
+    name: "Sisyphus-Junior",
+    prompt: "junior prompt",
+    mode: "all",
+  }
+
+  beforeEach(() => {
+    createBuiltinAgentsSpy = spyOn(agents, "createBuiltinAgents").mockResolvedValue({
+      sisyphus: builtinSisyphusConfig,
+      atlas: builtinAtlasConfig,
+    })
+
+    createSisyphusJuniorAgentSpy = spyOn(
+      sisyphusJunior,
+      "createSisyphusJuniorAgentWithOverrides",
+    ).mockReturnValue(sisyphusJuniorConfig)
+
+    discoverConfigSourceSkillsSpy = spyOn(skillLoader, "discoverConfigSourceSkills").mockResolvedValue([])
+    discoverUserClaudeSkillsSpy = spyOn(skillLoader, "discoverUserClaudeSkills").mockResolvedValue([])
+    discoverProjectClaudeSkillsSpy = spyOn(skillLoader, "discoverProjectClaudeSkills").mockResolvedValue([])
+    discoverOpencodeGlobalSkillsSpy = spyOn(skillLoader, "discoverOpencodeGlobalSkills").mockResolvedValue([])
+    discoverOpencodeProjectSkillsSpy = spyOn(skillLoader, "discoverOpencodeProjectSkills").mockResolvedValue([])
+    discoverProjectAgentsSkillsSpy = spyOn(skillLoader, "discoverProjectAgentsSkills").mockResolvedValue([])
+    discoverGlobalAgentsSkillsSpy = spyOn(skillLoader, "discoverGlobalAgentsSkills").mockResolvedValue([])
+
+    loadUserAgentsSpy = spyOn(agentLoader, "loadUserAgents").mockReturnValue({})
+    loadProjectAgentsSpy = spyOn(agentLoader, "loadProjectAgents").mockReturnValue({})
+    loadAgentDefinitionsSpy = spyOn(agentLoader, "loadAgentDefinitions").mockReturnValue({})
+    readOpencodeConfigAgentsSpy = spyOn(agentLoader, "readOpencodeConfigAgents").mockReturnValue({})
+
+    migrateAgentConfigSpy = spyOn(shared, "migrateAgentConfig").mockImplementation(
+      (config: Record<string, unknown>) => config,
+    )
+    logSpy = spyOn(shared, "log").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    createBuiltinAgentsSpy.mockRestore()
+    createSisyphusJuniorAgentSpy.mockRestore()
+    discoverConfigSourceSkillsSpy.mockRestore()
+    discoverUserClaudeSkillsSpy.mockRestore()
+    discoverProjectClaudeSkillsSpy.mockRestore()
+    discoverOpencodeGlobalSkillsSpy.mockRestore()
+    discoverOpencodeProjectSkillsSpy.mockRestore()
+    discoverProjectAgentsSkillsSpy.mockRestore()
+    discoverGlobalAgentsSkillsSpy.mockRestore()
+    loadUserAgentsSpy.mockRestore()
+    loadProjectAgentsSpy.mockRestore()
+    loadAgentDefinitionsSpy.mockRestore()
+    readOpencodeConfigAgentsSpy.mockRestore()
+    migrateAgentConfigSpy.mockRestore()
+    logSpy.mockRestore()
+  })
+
+  test("default behavior: build is forced to subagent/hidden when keep_opencode_modes is not set", async () => {
+    // given
+    const config = createBaseConfig()
+    ;(config as Record<string, unknown>).agent = {
+      build: { name: "build", prompt: "default build", mode: "primary" },
+    }
+    const pluginConfig: OhMyOpenCodeConfig = {
+      sisyphus_agent: { planner_enabled: false },
+    }
+
+    // when
+    const result = await applyAgentConfig({
+      config,
+      pluginConfig,
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    })
+
+    // then
+    const buildAgent = result.build as Record<string, unknown>
+    expect(buildAgent).toBeDefined()
+    expect(buildAgent.mode).toBe("subagent")
+    expect(buildAgent.hidden).toBe(true)
+  })
+
+  test("keep_opencode_modes=true: build agent is not forced to subagent/hidden", async () => {
+    // given
+    const config = createBaseConfig()
+    ;(config as Record<string, unknown>).agent = {
+      build: { name: "build", prompt: "default build", mode: "primary" },
+    }
+    const pluginConfig: OhMyOpenCodeConfig = {
+      sisyphus_agent: { keep_opencode_modes: true, planner_enabled: false },
+    }
+
+    // when
+    const result = await applyAgentConfig({
+      config,
+      pluginConfig,
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    })
+
+    // then
+    const buildAgent = result.build as Record<string, unknown>
+    expect(buildAgent).toBeDefined()
+    expect(buildAgent.mode).toBe("primary")
+    expect(buildAgent.hidden).toBeUndefined()
+  })
+
+  test("keep_opencode_modes=true: build key is absent when OpenCode has no build agent", async () => {
+    // given
+    const config = createBaseConfig()
+    ;(config as Record<string, unknown>).agent = {}
+    const pluginConfig: OhMyOpenCodeConfig = {
+      sisyphus_agent: { keep_opencode_modes: true, planner_enabled: false },
+    }
+
+    // when
+    const result = await applyAgentConfig({
+      config,
+      pluginConfig,
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    })
+
+    // then
+    expect(result.build).toBeUndefined()
+  })
+
+  test("keep_opencode_modes=true: plan agent is not demoted", async () => {
+    // given
+    const config = createBaseConfig()
+    ;(config as Record<string, unknown>).agent = {
+      plan: { name: "plan", prompt: "default plan", mode: "primary" },
+    }
+    const pluginConfig: OhMyOpenCodeConfig = {
+      sisyphus_agent: { keep_opencode_modes: true, planner_enabled: false },
+    }
+
+    // when
+    const result = await applyAgentConfig({
+      config,
+      pluginConfig,
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    })
+
+    // then
+    const planAgent = result.plan as Record<string, unknown>
+    expect(planAgent).toBeDefined()
+    expect(planAgent.mode).toBe("primary")
+    expect(planAgent.hidden).toBeUndefined()
+  })
+
+  test("keep_opencode_modes=false (explicit): default behavior applies, build is subagent/hidden", async () => {
+    // given
+    const config = createBaseConfig()
+    ;(config as Record<string, unknown>).agent = {
+      build: { name: "build", prompt: "default build", mode: "primary" },
+    }
+    const pluginConfig: OhMyOpenCodeConfig = {
+      sisyphus_agent: { keep_opencode_modes: false, planner_enabled: false },
+    }
+
+    // when
+    const result = await applyAgentConfig({
+      config,
+      pluginConfig,
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    })
+
+    // then
+    const buildAgent = result.build as Record<string, unknown>
+    expect(buildAgent).toBeDefined()
+    expect(buildAgent.mode).toBe("subagent")
+    expect(buildAgent.hidden).toBe(true)
+  })
+})

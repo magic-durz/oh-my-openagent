@@ -180,11 +180,13 @@ export async function applyAgentConfig(params: {
     );
 
   const isSisyphusEnabled = params.pluginConfig.sisyphus_agent?.disabled !== true;
+  const keepOpencodeModes = params.pluginConfig.sisyphus_agent?.keep_opencode_modes ?? false;
   const builderEnabled =
     params.pluginConfig.sisyphus_agent?.default_builder_enabled ?? false;
   const plannerEnabled = params.pluginConfig.sisyphus_agent?.planner_enabled ?? true;
   const replacePlan = params.pluginConfig.sisyphus_agent?.replace_plan ?? true;
-  const shouldDemotePlan = plannerEnabled && replacePlan;
+  const replaceBuild = !keepOpencodeModes;
+  const shouldDemotePlan = !keepOpencodeModes && plannerEnabled && replacePlan;
   const configuredDefaultAgent = getConfiguredDefaultAgent(params.config);
 
   if (isSisyphusEnabled && builtinAgents.sisyphus) {
@@ -321,7 +323,9 @@ export async function applyAgentConfig(params: {
       ...filterDisabledAgents(filteredAgentDefinitionAgents),
       ...filterDisabledAgents(filteredOpencodeConfigAgents),
       ...filteredConfigAgents,
-      build: { ...migratedBuild, mode: "subagent", hidden: true },
+      ...(replaceBuild
+        ? { build: { ...migratedBuild, mode: "subagent", hidden: true } }
+        : Object.keys(migratedBuild).length > 0 ? { build: migratedBuild } : {}),
       ...(planDemoteConfig ? { plan: planDemoteConfig } : {}),
     };
   } else {

@@ -486,6 +486,7 @@ You can control related features in `oh-my-openagent.json`:
     "disabled": false, // Enable Atlas orchestration (default: false)
     "planner_enabled": true, // Enable Prometheus (default: true)
     "replace_plan": true, // Replace default plan agent with Prometheus (default: true)
+    "keep_opencode_modes": false, // Keep OpenCode native plan/build agents (default: false)
   },
 
   // Hook settings (add to disable)
@@ -495,6 +496,25 @@ You can control related features in `oh-my-openagent.json`:
   ],
 }
 ```
+
+### Keeping OpenCode's Default plan and build Modes
+
+By default, oh-my-openagent demotes OpenCode's native `plan` agent (replacing it with Prometheus) and hides the `build` agent (replaced by Sisyphus/Hephaestus). If you prefer to keep both native modes accessible alongside the Sisyphus orchestration system, set `keep_opencode_modes: true`:
+
+```jsonc
+{
+  "sisyphus_agent": {
+    "keep_opencode_modes": true
+  }
+}
+```
+
+With this option enabled:
+- OpenCode's `plan` agent remains as a primary-mode agent (not demoted to Prometheus).
+- OpenCode's `build` agent is no longer hidden; its original configuration is preserved.
+- Sisyphus and all other oh-my-openagent agents continue to function normally.
+
+This is useful for simpler tasks where you want a plain plan-and-build loop without the full orchestration system.
 
 ---
 

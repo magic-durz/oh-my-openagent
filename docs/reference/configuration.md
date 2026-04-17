@@ -419,7 +419,8 @@ Configure the main orchestration system.
     "disabled": false,
     "default_builder_enabled": false,
     "planner_enabled": true,
-    "replace_plan": true
+    "replace_plan": true,
+    "keep_opencode_modes": false
   }
 }
 ```
@@ -430,6 +431,7 @@ Configure the main orchestration system.
 | `default_builder_enabled` | `false` | Enable OpenCode-Builder agent (off by default)                  |
 | `planner_enabled`         | `true`  | Enable Prometheus (Planner) agent                               |
 | `replace_plan`            | `true`  | Demote default plan agent to subagent mode                      |
+| `keep_opencode_modes`     | `false` | Keep OpenCode's native plan and build agents as primary modes   |
 
 Sisyphus agents can also be customized under `agents` using their names: `Sisyphus`, `OpenCode-Builder`, `Prometheus (Planner)`, `Metis (Plan Consultant)`.
 
