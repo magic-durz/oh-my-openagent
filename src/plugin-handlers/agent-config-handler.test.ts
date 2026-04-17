@@ -11,6 +11,7 @@ import * as skillLoader from "../features/opencode-skill-loader"
 import type { LoadedSkill } from "../features/opencode-skill-loader"
 import { getAgentListDisplayName, getAgentRuntimeName } from "../shared/agent-display-names"
 import { applyAgentConfig } from "./agent-config-handler"
+import * as prometheusConfigBuilder from "./prometheus-agent-config-builder"
 import type { PluginComponents } from "./plugin-components-loader"
 
 const BUILTIN_SISYPHUS_DISPLAY_NAME = getAgentListDisplayName("sisyphus")
@@ -659,6 +660,7 @@ describe("applyAgentConfig builtin override protection", () => {
 describe("applyAgentConfig keep_opencode_modes", () => {
   let createBuiltinAgentsSpy: ReturnType<typeof spyOn>
   let createSisyphusJuniorAgentSpy: ReturnType<typeof spyOn>
+  let buildPrometheusAgentConfigSpy: ReturnType<typeof spyOn>
   let discoverConfigSourceSkillsSpy: ReturnType<typeof spyOn>
   let discoverUserClaudeSkillsSpy: ReturnType<typeof spyOn>
   let discoverProjectClaudeSkillsSpy: ReturnType<typeof spyOn>
@@ -704,6 +706,11 @@ describe("applyAgentConfig keep_opencode_modes", () => {
       "createSisyphusJuniorAgentWithOverrides",
     ).mockReturnValue(sisyphusJuniorConfig)
 
+    buildPrometheusAgentConfigSpy = spyOn(
+      prometheusConfigBuilder,
+      "buildPrometheusAgentConfig",
+    ).mockResolvedValue({ model: "anthropic/claude-opus-4-7", mode: "primary" })
+
     discoverConfigSourceSkillsSpy = spyOn(skillLoader, "discoverConfigSourceSkills").mockResolvedValue([])
     discoverUserClaudeSkillsSpy = spyOn(skillLoader, "discoverUserClaudeSkills").mockResolvedValue([])
     discoverProjectClaudeSkillsSpy = spyOn(skillLoader, "discoverProjectClaudeSkills").mockResolvedValue([])
@@ -726,6 +733,7 @@ describe("applyAgentConfig keep_opencode_modes", () => {
   afterEach(() => {
     createBuiltinAgentsSpy.mockRestore()
     createSisyphusJuniorAgentSpy.mockRestore()
+    buildPrometheusAgentConfigSpy.mockRestore()
     discoverConfigSourceSkillsSpy.mockRestore()
     discoverUserClaudeSkillsSpy.mockRestore()
     discoverProjectClaudeSkillsSpy.mockRestore()
@@ -766,7 +774,7 @@ describe("applyAgentConfig keep_opencode_modes", () => {
     expect(buildAgent.hidden).toBe(true)
   })
 
-  test("keep_opencode_modes=true: build agent is not forced to subagent/hidden", async () => {
+  test("keep_opencode_modes=true: build agent is subagent but not hidden", async () => {
     // given
     const config = createBaseConfig()
     ;(config as Record<string, unknown>).agent = {
@@ -784,14 +792,14 @@ describe("applyAgentConfig keep_opencode_modes", () => {
       pluginComponents: createPluginComponents(),
     })
 
-    // then
+    // then - build is visible (subagent, not hidden) so user can select it
     const buildAgent = result.build as Record<string, unknown>
     expect(buildAgent).toBeDefined()
-    expect(buildAgent.mode).toBe("primary")
+    expect(buildAgent.mode).toBe("subagent")
     expect(buildAgent.hidden).toBeUndefined()
   })
 
-  test("keep_opencode_modes=true: build key is absent when OpenCode has no build agent", async () => {
+  test("keep_opencode_modes=true: build agent emitted as subagent even when OpenCode has no build agent configured", async () => {
     // given
     const config = createBaseConfig()
     ;(config as Record<string, unknown>).agent = {}
@@ -807,18 +815,21 @@ describe("applyAgentConfig keep_opencode_modes", () => {
       pluginComponents: createPluginComponents(),
     })
 
-    // then
-    expect(result.build).toBeUndefined()
+    // then - build slot is still present but not hidden
+    const buildAgent = result.build as Record<string, unknown>
+    expect(buildAgent).toBeDefined()
+    expect(buildAgent.mode).toBe("subagent")
+    expect(buildAgent.hidden).toBeUndefined()
   })
 
-  test("keep_opencode_modes=true: plan agent is not demoted", async () => {
-    // given
+  test("keep_opencode_modes=true: plan agent is still demoted (Prometheus is primary) but not hidden", async () => {
+    // given - planner_enabled defaults to true
     const config = createBaseConfig()
     ;(config as Record<string, unknown>).agent = {
       plan: { name: "plan", prompt: "default plan", mode: "primary" },
     }
     const pluginConfig: OhMyOpenCodeConfig = {
-      sisyphus_agent: { keep_opencode_modes: true, planner_enabled: false },
+      sisyphus_agent: { keep_opencode_modes: true },
     }
 
     // when
@@ -829,10 +840,10 @@ describe("applyAgentConfig keep_opencode_modes", () => {
       pluginComponents: createPluginComponents(),
     })
 
-    // then
+    // then - plan is demoted to subagent (Prometheus takes over as primary) but remains visible
     const planAgent = result.plan as Record<string, unknown>
     expect(planAgent).toBeDefined()
-    expect(planAgent.mode).toBe("primary")
+    expect(planAgent.mode).toBe("subagent")
     expect(planAgent.hidden).toBeUndefined()
   })
 

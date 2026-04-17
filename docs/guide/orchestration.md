@@ -510,11 +510,11 @@ By default, oh-my-openagent demotes OpenCode's native `plan` agent (replacing it
 ```
 
 With this option enabled:
-- OpenCode's `plan` agent remains as a primary-mode agent (not demoted to Prometheus).
-- OpenCode's `build` agent is no longer hidden; its original configuration is preserved.
+- Prometheus remains the primary planner; OpenCode's native `plan` agent is still selectable (subagent mode, not hidden).
+- OpenCode's `build` agent is visible and selectable (subagent mode, not hidden).
 - Sisyphus and all other oh-my-openagent agents continue to function normally.
 
-This is useful for simpler tasks where you want a plain plan-and-build loop without the full orchestration system.
+This is useful when you want to retain access to OpenCode's default planning and building modes while the full Sisyphus orchestration system is active.
 
 ---
 

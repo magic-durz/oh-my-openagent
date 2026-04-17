@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { parseJsonc, LEGACY_PLUGIN_NAME, PLUGIN_NAME } from "../../shared"
 import type { DetectedConfig } from "../types"
+import { SisyphusAgentConfigSchema } from "../../config/schema/sisyphus-agent"
 import { getOmoConfigPath } from "./config-context"
 import { detectConfigFormat } from "./opencode-config-format"
 import { parseOpenCodeConfigFileWithError } from "./parse-opencode-config-file"
@@ -50,7 +51,10 @@ function detectProvidersFromOmoConfig(): {
     const hasKimiForCoding = configStr.includes('"kimi-for-coding/')
     const hasOpencodeGo = configStr.includes('"opencode-go/')
     const hasVercelAiGateway = configStr.includes('"vercel/')
-    const keepOpencodeModes = !!(omoConfig.sisyphus_agent as Record<string, unknown> | undefined)?.keep_opencode_modes
+    const sisyphusAgentParsed = SisyphusAgentConfigSchema.safeParse(omoConfig.sisyphus_agent)
+    const keepOpencodeModes = sisyphusAgentParsed.success
+      ? (sisyphusAgentParsed.data.keep_opencode_modes ?? false)
+      : false
 
     return { hasOpenAI, hasOpencodeZen, hasZaiCodingPlan, hasKimiForCoding, hasOpencodeGo, hasVercelAiGateway, keepOpencodeModes }
   } catch {

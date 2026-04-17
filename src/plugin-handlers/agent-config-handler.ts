@@ -185,8 +185,7 @@ export async function applyAgentConfig(params: {
     params.pluginConfig.sisyphus_agent?.default_builder_enabled ?? false;
   const plannerEnabled = params.pluginConfig.sisyphus_agent?.planner_enabled ?? true;
   const replacePlan = params.pluginConfig.sisyphus_agent?.replace_plan ?? true;
-  const replaceBuild = !keepOpencodeModes;
-  const shouldDemotePlan = !keepOpencodeModes && plannerEnabled && replacePlan;
+  const shouldDemotePlan = plannerEnabled && replacePlan;
   const configuredDefaultAgent = getConfiguredDefaultAgent(params.config);
 
   if (isSisyphusEnabled && builtinAgents.sisyphus) {
@@ -268,10 +267,17 @@ export async function applyAgentConfig(params: {
       : {};
 
     const planDemoteConfig = shouldDemotePlan
-      ? buildPlanDemoteConfig(
-          agentConfig["prometheus"] as Record<string, unknown> | undefined,
-          params.pluginConfig.agents?.plan as Record<string, unknown> | undefined,
-        )
+      ? (() => {
+          const demoted = buildPlanDemoteConfig(
+            agentConfig["prometheus"] as Record<string, unknown> | undefined,
+            params.pluginConfig.agents?.plan as Record<string, unknown> | undefined,
+          );
+          if (keepOpencodeModes) {
+            const { hidden: _, ...withoutHidden } = demoted;
+            return withoutHidden;
+          }
+          return demoted;
+        })()
       : undefined;
 
     const protectedBuiltinAgentNames = createProtectedAgentNameSet([
@@ -308,9 +314,8 @@ export async function applyAgentConfig(params: {
     );
 
     const getBuildConfig = (): Record<string, unknown> => {
-      if (replaceBuild) return { build: { ...migratedBuild, mode: "subagent", hidden: true } };
-      if (Object.keys(migratedBuild).length > 0) return { build: migratedBuild };
-      return {};
+      const base = { ...migratedBuild, mode: "subagent" as const };
+      return { build: keepOpencodeModes ? base : { ...base, hidden: true } };
     };
 
     params.config.agent = {
