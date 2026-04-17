@@ -307,6 +307,12 @@ export async function applyAgentConfig(params: {
       protectedBuiltinAgentNames,
     );
 
+    const getBuildConfig = (): Record<string, unknown> => {
+      if (replaceBuild) return { build: { ...migratedBuild, mode: "subagent", hidden: true } };
+      if (Object.keys(migratedBuild).length > 0) return { build: migratedBuild };
+      return {};
+    };
+
     params.config.agent = {
       ...agentConfig,
       ...Object.fromEntries(
@@ -323,9 +329,7 @@ export async function applyAgentConfig(params: {
       ...filterDisabledAgents(filteredAgentDefinitionAgents),
       ...filterDisabledAgents(filteredOpencodeConfigAgents),
       ...filteredConfigAgents,
-      ...(replaceBuild
-        ? { build: { ...migratedBuild, mode: "subagent", hidden: true } }
-        : Object.keys(migratedBuild).length > 0 ? { build: migratedBuild } : {}),
+      ...getBuildConfig(),
       ...(planDemoteConfig ? { plan: planDemoteConfig } : {}),
     };
   } else {
